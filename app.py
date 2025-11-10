@@ -2,46 +2,70 @@ from flask import Flask, render_template, jsonify, request #Renderizar html e fa
 from src.helper import downloald_hugging_face_embeddings #cria objeto de embedding do hugging face
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai import ChatOpenAI
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
+# from langchain.chains import create_retrieval_chain
+# from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 from src.prompt import *
 import os
+import threading
+from collections.abc import Sequence
+from typing import Annotated, TypedDict
+from langchain.chat_models import init_chat_model
+from langchain_core.messages import BaseMessage, HumanMessage
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import END, START, StateGraph, add_messages
+from langgraph.graph.state import RunnableConfig
 
-PINECONE_INDEX_NAME = "chatbot" #nome do índice no pinecone
-GPT_MODEL = "gpt-4.1-nano" #modelo GPT usado
+PINECONE_INDEX_NAME = "chatbot" 
+GPT_MODEL = "gpt-4.1-nano" 
 
-app = Flask(__name__) #Instância do Flask
+app = Flask(__name__) 
 
-load_dotenv() #carrega variáveis de ambiente do arquivo .env
+load_dotenv() 
 
-PINECODE_API_KEY = os.getenv("PINECONE_API_KEY") #carrega chave da pinecone do .env
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") #carrega chave da openai do .env
+PINECODE_API_KEY = os.getenv("PINECONE_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-os.environ["PINECONE_API_KEY"] = PINECODE_API_KEY #define variável de ambiente para pinecone
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY #define variável de ambiente para openai
+os.environ["PINECONE_API_KEY"] = PINECODE_API_KEY 
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY 
+embeddings = downloald_hugging_face_embeddings()
 
-embeddings = downloald_hugging_face_embeddings() #cria objeto de embedding do hugging face. Por padrão no metodo já foi definido um modelo de embedding
-#Vai ser usado para converter textos em vetores na busca do pinecone
-
-docsearch = PineconeVectorStore.from_existing_index( #Conecta a um índice existente no pinecone e configuraos vetorizer(os embeddings) para consulta
-    index_name=PINECONE_INDEX_NAME,
-    embedding=embeddings,
-)
-
-retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3}) #Cria um objeto retriever para buscar documentos similares no índice pinecone. Retorna os 3 documentos mais relevantes
+docsearch = PineconeVectorStore.from_existing_index(index_name=PINECONE_INDEX_NAME,embedding=embeddings)
+retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3}) 
 
 chatModel = ChatOpenAI(model=GPT_MODEL) #Cria um objeto de modelo de chat usando OpenAI
 
-prompt = ChatPromptTemplate.from_messages([ #Define o prompt de system e user
-    ("system", system_promp),
-    ("human", "{input}"),
-])
+# === State ===
+class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], add_messages]
 
-question_answer_chain = create_stuff_documents_chain(chatModel,prompt) #Substitui a variável no prompt system pelo conteúdo obtido no RAG
-rag_chain = create_retrieval_chain(retriever,question_answer_chain) #Monta a cadeia de RAG completa: ele usa o retriever para buscar docs e passa esses
-#docs para a question_answer_chain
+# === Node ===
+def call_llm(state: AgentState) -> AgentState:
+    llm_result = chatModel.invoke(state["messages"])
+    return {"messages": [llm_result]}
+
+_builder = StateGraph(AgentState, context_schema=None, input_schema=AgentState, output_schema=AgentState)
+_builder.add_node("call_llm", call_llm)
+_builder.add_edge(START, "call_llm")
+_builder.add_edge("call_llm", END)
+
+_checkpointer = InMemorySaver()
+_graph = _builder.compile(checkpointer=_checkpointer)
+
+def chat_with_memory(session_id: str, user_text: str) -> str:
+    """
+    Recebe um identificador de sessão (session_id) e o texto do usuário,
+    invoca o grafo com memória e retorna apenas o texto de resposta.
+    """
+    # O LangGraph usa "thread_id" para manter o histórico por conversa
+    config = RunnableConfig(configurable={"thread_id": session_id})
+    human_message = HumanMessage(user_text)
+    result = _graph.invoke({"messages": [human_message]}, config=config)
+
+    # O último item em result["messages"] é a resposta do modelo
+    last_msg = result["messages"][-1]
+    return getattr(last_msg, "content", str(last_msg))
 
 @app.route("/") #rota que renderiza o template chat.html
 def index():
@@ -49,12 +73,18 @@ def index():
 
 @app.route("/get", methods=["GET", "POST"])
 def chat():
-    msg = request.form["msg"] #recebe mensagem do usuário por um forms
-    input = msg
-    docs = retriever.get_relevant_documents(msg) #usa o retriever para buscar documentos relevantes no pinecone
-    context = "\n\n".join([d.page_content for d in docs]) #concatena o conteúdo dos documentos retornados para usar como contexto no prompt
-    response = rag_chain.invoke({"input": msg}) #invoca a cadeia de RAG com a mensagem do usuário
-    return str(response["answer"]) #retorna a resposta do modelo como string
+    # 1) Captura a mensagem
+    msg = request.form["msg"]
+
+    # 2) Defina um identificador de sessão para manter o histórico.
+    #    Você pode receber do front (ex.: form["session_id"]) ou gerar por IP/user-agent.
+    session_id = request.form.get("session_id") or request.remote_addr or "default-session"
+
+    # 3) Chama a função de chat com memória
+    answer = chat_with_memory(session_id=session_id, user_text=msg)
+
+    # 4) Retorna texto simples (igual você já faz)
+    return str(answer)
 
 if __name__ == '__main__': #executa o app flask
     app.run(host="0.0.0.0", port=8080, debug=True)
