@@ -66,9 +66,7 @@ def extract_sections_as_documents(pdf_path: str) -> List[Document]:
     while i < number_of_lines:
         text, font = lines[i]
  
-        # Procurar início de seção pelo título em Black
         if _is_black(font):
-            # 1) Agregar todas as linhas consecutivas em Black como parte do título
             title_parts = [text]
             j = i + 1
             while j < number_of_lines and _is_black(lines[j][1]):
@@ -76,15 +74,13 @@ def extract_sections_as_documents(pdf_path: str) -> List[Document]:
                 j += 1
             title = " ".join(part.strip() for part in title_parts).strip()
 
-            # 2) Avançar para o conteúdo até o próximo título Black
             content_lines = []
             keywords = set()
-            keywords.add(title)  # incluir o título como keyword
+            keywords.add(title)
 
             k = j
             while k < number_of_lines and not _is_black(lines[k][1]):
                 line_text, line_font = lines[k]
-                # Coleta subseções como keywords (linhas em Semibold)
                 if _is_semibold(line_font):
                     keywords.add(line_text.strip())
                 content_lines.append(line_text)
@@ -101,9 +97,8 @@ def extract_sections_as_documents(pdf_path: str) -> List[Document]:
                     },
                 )
             )
-            i = k  # continuar da próxima seção
+            i = k 
         else:
-            # linha fora de qualquer seção (antes do primeiro título) — opcionalmente ignore
             i += 1
 
     doc.close()

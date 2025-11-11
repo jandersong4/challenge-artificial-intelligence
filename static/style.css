@@ -1,6 +1,3 @@
-/* =========
-   Paleta & base
-   ========= */
 :root {
   --red: #e53935;
   --red-700: #c62828;
@@ -38,9 +35,6 @@ body {
     linear-gradient(180deg, var(--gray-900) 0%, var(--gray-800) 100%);
 }
 
-/* =========
-   Layout do chat (mantendo classes originais)
-   ========= */
 .chat {
   margin-top: auto;
   margin-bottom: auto;
@@ -87,9 +81,6 @@ body {
   background: transparent;
 }
 
-/* =========
-   Header
-   ========= */
 .user_img {
   height: 56px;
   width: 56px;
@@ -125,9 +116,6 @@ body {
   margin-bottom: 0;
 }
 
-/* =========
-   Avatares e containers
-   ========= */
 .user_img_msg {
   height: 40px;
   width: 40px;
@@ -156,9 +144,6 @@ body {
   background: rgba(0, 0, 0, 0.3);
 }
 
-/* =========
-   Bubbles (mantendo nomes originais)
-   ========= */
 .msg_cotainer,
 .msg_cotainer_send {
   position: relative;
@@ -170,21 +155,18 @@ body {
   line-height: 1.45;
 }
 
-/* Bot (esquerda) — cinza/preto moderno */
 .msg_cotainer {
   margin: auto 0 auto 10px;
   background: linear-gradient(180deg, var(--gray-600), var(--gray-500));
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Usuário (direita) — azul moderno */
 .msg_cotainer_send {
   margin: auto 10px auto 0;
   background: linear-gradient(180deg, var(--blue), var(--blue-700));
   color: #fff;
 }
 
-/* Timestamps */
 .msg_time,
 .msg_time_send {
   position: absolute;
@@ -199,9 +181,6 @@ body {
   right: 0;
 }
 
-/* =========
-   Input / botões
-   ========= */
 .type_msg {
   background: rgba(255, 255, 255, 0.06) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -252,9 +231,6 @@ body {
   border-radius: 12px !important;
 }
 
-/* =========
-   Estado: digitando…
-   ========= */
 .typing {
   display: inline-flex;
   gap: 6px;
@@ -287,9 +263,6 @@ body {
   }
 }
 
-/* =========
-   Responsivo
-   ========= */
 @media (max-width: 576px) {
   .contacts_card {
     margin-bottom: 15px !important;
