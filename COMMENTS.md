@@ -212,29 +212,6 @@ Por fim, foram implementadas funções de logging para observabilidade do fluxo 
 Devido ao caráter não determinístico dos LLMs, é fundamental ter rastreabilidade das decisões e execuções.
 Assim, as interações são registradas no arquivo chat_llm_log.txt, permitindo identificar erros e compreender o comportamento do sistema durante as conversas.
 
-Inicialmente foi estruturado o fluxo lógico da solução
-O esboço geral consistiu em Dado uma base de dados era necessário trasforma-la em embeddings. Após isso armazenar essa base em um banco de dados vetorial para que futuramente a informação seja recuperada por semelhança semantica em uma estratégia de RAG. Junto a isso um frontEnd seria construído de forma que o usuário possa interagir com o chatbot. Com essa iteração um chatbotAgente iria analisar as mensagens recuperar informação quando necessário e responder ao usuário
-
-Apesar de ter trabalhado por cerca de 1 ano e meio com desenvolvimento web. Meu foco nos últimos anos se deu em automação BPM/RPA utilizando LLMs o que dificultou a construção dessa solução em relação ao conhecimento de tecnologias web. No entanto, esse desafio foi superado com a busca de conteúdo na internet.
-
-A escolha da linguagem python se deu pelo fato da extrema afinidade da tecnologia com cenário de IA devido a suas bíbliotecas, dessa forma para a ampliação do sistema com soluções de Ia mais robustas e as grandes quantidades de bíbliotecas a linguagem se mostrou mais adequada.
-
-O primeiro passo foi fazer o parsing do texto do pdf e em seguida transforma-lo em embeddings. Para a construção dos embeddings foi utilizado um modelo da huggingFace. Utilizei a hugging face devido a experiências anteriores com a plataforma e a disponibilidade de modelos gratuitos o modelo BAAI/bge-small-en-v1.5 foi escolhido devido ao equilíbrio entre desempenho e eficiência e pelo seus embeddings gerados serem suficentes para o calculo de similaridade semantica na recuperação dos dados usando um embedding de 384 dimensões.
-
-Os dados foram armazenados no Pinecone. Realmente não possuo um amplo conhecimento nas tecnologias para armazenamento desses dados e busquei um banco de dados vetorial simples e que atendencem a demanda do desafio. Sua simplicidade foi a principal vantagem e motivo de escolha aqui. Acredito que para uma solução mais escalável outro banco mais eficiente poderia ser escolhido. Esse banco de dados facilita também a estruturação da estratéegia de recuperação da informação. Permite uma busca por similaridade de embeddings. Nesse projeto foi utilizado a similaridad de cossenos definida pelo parâmetro "cosine" ao criar o banco.
-
-Em relação ao chatbot as principais tecnologias utilizadas aqui foram o langchain e o langgraph. Esses frameworks são amplamente utilizados no contexto de LLMs e fornecem abstrações muito úteis e práticas acelerando muito o processo de orquestração de agentes e a construção de soluções escaláveis para LLMs.
-
-Com o langchain e o langgraph foi modelado um agent chatbot de forma que ao receber uma mensagem esse agente decide se é necessário fazer uma busca na base de dados ou não a partir disso ele segue o fluxo respondendo com base no contexto ou caso contrário apresenta uma resposta direta para casos sem contexto.
-O agente contou com prompts adaptados para cada caso, tanto decisão de recuperação da informação quanto para respostas e guardrails para impedir a fulga do tema. chatbot mantém o contexto da conversa ao longo de todo o dialogo
-
-O modelo útilizado foi o 4.1-mini. Modelos maiores com certeza poderiam ser mais acertivo. No entanto, uma tendencia de mercado é que uma boa engenharia de contexto pode diminuir a dependencia de um modelo tão grande. Com um bom contexto e definições claras um modelo pequeno já pode ser útil para muitos casos.
-Dessa forma , utilizar o modelo 4.1-mini além de ser suficiente garante um menor custo em relação a modelos maiores e maior rapidez em tempo de inferência. Algo muito importante para experiência do usuário em um chatbot. Por fim, utilizo muitos modelos da openAI e pelo costume e por gostar da solução da empresa preferi esse modelo.
-
-Por fim é útlizado o flask para erguer uma aplicação com um frontend e rotas para a interação do usuário. A escolha foi por facilidade de utilização e por ser suficiente para o projeto desenvolvido.
-
-Obs: Foi implementado também algumas funções de log para a observabilidade do fluxo e modelo. Devido ao caráter não deterministico dos modelos conseguir tracker erros e enter o fluxo é extremamente importante então foram construidas as funções para escrever no documento chat_llm_log.txt
-
 **Extra:** Foi implementado um workflow de **CI/CD** e realizada uma tentativa de deploy na **AWS**.  
 A abordagem foi quase totalmente bem-sucedida; entretanto, **um pequeno erro relacionado a permissões de acesso** foi identificado nos estágios finais do processo de deploy e ainda não foi solucionado.
 
@@ -257,4 +234,17 @@ Uma possível melhoria seria a implementação de um **Adaptive RAG**, no qual u
 Além disso, a **estratégia de recuperação** poderia ser **avaliada quantitativamente** por meio de uma **base de testes**, medindo a taxa de acerto das respostas do modelo conforme a estratégia de RAG utilizada.  
 Para isso, poderia ser utilizado um **LLM-as-a-Judge**, responsável por comparar as respostas geradas com as respostas esperadas, permitindo medir a precisão e a consistência do sistema.
 
+Junto a isso, embora o prompt garanta explicações claras e respostas eficientes e úteis nos testes, a **adaptação do agente ao tipo de conteúdo preferido e às dificuldades do aluno** ainda não foi plenamente alcançada.  Uma melhoria possível seria a criação de **mais atributos de estado**, permitindo que as preferências do aluno, como formato de material (vídeo, texto, etc.), influenciassem a forma de resposta do modelo.  
+
+Poderiam ser aplicadas **técnicas de aprendizado por reforço (Reinforcement Learning)**, de modo que o agente aprendesse, por meio de recompensas, quais são as preferências individuais do aluno.  
+Por exemplo, se o aluno demonstrasse preferência por vídeos, esse formato passaria a ter um **peso maior**, fazendo com que o modelo priorizasse respostas nesse formato. Ao mesmo tempo, o agente deveria manter uma **estratégia de exploração**, sugerindo ocasionalmente novos formatos, permitindo que o aluno experimentasse diferentes abordagens e o agente se adaptasse a possíveis mudanças nas preferências.
+
+Além disso, com a **inserção de novos nós no grafo** e **novos parâmetros de estado**, seria possível armazenar **indicadores de dificuldade do aluno**.  
+Assim, à medida que o aluno interagisse, o agente compreenderia melhor suas limitações e **ajustaria o fluxo de respostas** para ajudá-lo a superar essas dificuldades de forma progressiva.
+
 Essas melhorias contribuiriam para uma **orquestração mais inteligente** e para uma **avaliação mais confiável** do desempenho do chatbot.
+
+## FLuxo final do agente
+
+![Descrição da imagem](./graph_flow.png)
+
