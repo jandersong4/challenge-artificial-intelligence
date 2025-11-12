@@ -248,3 +248,11 @@ Essas melhorias contribuiriam para uma **orquestração mais inteligente** e par
 
 ![Descrição da imagem](./graph_flow.png)
 
+## Exemplo de execução chatbot
+
+![Descrição da imagem](./chatImages/image.png)
+![Descrição da imagem](./chatImages/image_copy.png)
+![Descrição da imagem](./chatImages/image_copy_2.png)
+![Descrição da imagem](./chatImages/image_copy_3.png)
+
+
